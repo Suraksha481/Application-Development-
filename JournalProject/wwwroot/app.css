@@ -1,0 +1,330 @@
+/* Light mode (default) */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #f5f5f5;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --link-color: #0066cc;
+    --link-hover: #0052a3;
+    --btn-secondary-bg: #6c757d;
+    --btn-secondary-hover: #5a6268;
+}
+
+/* Dark mode */
+body.dark-theme {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b0b0b0;
+    --border-color: #404040;
+    --link-color: #4da6ff;
+    --link-hover: #66b3ff;
+    --btn-secondary-bg: #505050;
+    --btn-secondary-hover: #606060;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Global button styling for dark mode */
+button, .btn {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+button:hover, .btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Links */
+a {
+    color: var(--link-color);
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+/* Input fields and form elements */
+input, textarea, select {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+input:focus, textarea:focus, select:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--link-color);
+}
+
+/* Cards and containers */
+.card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.alert {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Tables */
+table {
+    color: var(--text-primary);
+}
+
+thead {
+    background-color: var(--bg-tertiary);
+}
+
+tbody tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* Modal and dialogs */
+.modal-content {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.modal-header {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+/* Scrollbar styling for dark mode */
+body.dark-theme::-webkit-scrollbar {
+    width: 10px;
+}
+
+body.dark-theme::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+body.dark-theme::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 5px;
+}
+
+body.dark-theme::-webkit-scrollbar-thumb:hover {
+    background: var(--border-color);
+}
+
+/* Bootstrap component overrides for dark mode */
+body.dark-theme .btn-secondary {
+    background-color: var(--btn-secondary-bg);
+    border-color: var(--btn-secondary-bg);
+    color: var(--text-primary);
+}
+
+body.dark-theme .btn-secondary:hover {
+    background-color: var(--btn-secondary-hover);
+    border-color: var(--btn-secondary-hover);
+}
+
+body.dark-theme .badge {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+body.dark-theme .badge.bg-info {
+    background-color: rgba(65, 105, 225, 0.4) !important;
+    color: var(--link-color);
+}
+
+body.dark-theme .badge.bg-secondary {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary);
+}
+
+body.dark-theme .badge.bg-warning {
+    background-color: rgba(255, 193, 7, 0.3) !important;
+    color: #ffeb3b;
+}
+
+body.dark-theme .badge.bg-danger {
+    background-color: rgba(244, 67, 54, 0.3) !important;
+    color: #ff6b6b;
+}
+
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+body.dark-theme .form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
+    background-color: var(--bg-primary);
+    border-color: var(--link-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(77, 166, 255, 0.25);
+}
+
+body.dark-theme .btn-close {
+    filter: invert(1);
+}
+
+body.dark-theme .form-check-input {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .form-check-input:checked {
+    background-color: var(--link-color);
+    border-color: var(--link-color);
+}
+
+body.dark-theme .form-check-label {
+    color: var(--text-primary);
+}
+
+body.dark-theme .text-muted {
+    color: var(--text-secondary) !important;
+}
+
+body.dark-theme hr {
+    border-color: var(--border-color);
+    opacity: 0.5;
+}
+
+/* Text utilities */
+body.dark-theme .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-theme h5,
+body.dark-theme h6 {
+    color: var(--text-primary);
+}
+
+body.dark-theme p {
+    color: var(--text-primary);
+}
+
+/* Spinner and loading states */
+body.dark-theme .spinner-border {
+    border-color: rgba(77, 166, 255, 0.25);
+    border-right-color: var(--link-color);
+}
+
+/* List groups */
+body.dark-theme .list-group-item {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+body.dark-theme .list-group-item.active {
+    background-color: var(--link-color);
+    border-color: var(--link-color);
+    color: white;
+}
+
+/* Pagination */
+body.dark-theme .pagination .page-link {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--link-color);
+}
+
+body.dark-theme .pagination .page-link:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--link-hover);
+}
+
+body.dark-theme .pagination .page-item.active .page-link {
+    background-color: var(--link-color);
+    border-color: var(--link-color);
+}
+
+/* SecuritySetting card bg-light fix */
+body.dark-theme .card.bg-light {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary);
+}
+
+body.dark-theme .card.bg-light .card-body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+body.dark-theme .card.bg-light h6,
+body.dark-theme .card.bg-light p,
+body.dark-theme .card.bg-light ol {
+    color: var(--text-primary);
+}
+
+/* Journal card header bg-light fix */
+body.dark-theme .card-header.bg-light {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary);
+}
+
+body.dark-theme .card-header.bg-light h5,
+body.dark-theme .card-header.bg-light small {
+    color: var(--text-primary);
+}
+
+body.dark-theme .card-footer.bg-white {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color);
+}
+
+/* Rich Text Editor styling for dark mode */
+body.dark-theme .editor-toolbar {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .editor-toolbar .toolbar-group {
+    border-right-color: var(--border-color);
+}
+
+body.dark-theme .editor-container .editor-content {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .editor-info {
+    color: var(--text-secondary);
+}

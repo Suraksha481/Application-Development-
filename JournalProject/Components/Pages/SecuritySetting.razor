@@ -1,0 +1,225 @@
+﻿@page "/security-settings"
+@using JournalProject.Models
+@using JournalProject.Services
+@inject JournalService JournalService
+@inject SecurityService SecurityService
+
+<div class="container mt-4">
+    <h2> Security & Privacy Settings</h2>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Password Types Info -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Available Password Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-success"> Strong Password</h6>
+                                <small class="text-muted">
+                                    <ul class="mb-0 ps-3">
+                                        <li>8+ characters</li>
+                                        <li>Uppercase (A-Z)</li>
+                                        <li>Lowercase (a-z)</li>
+                                        <li>Digit (0-9)</li>
+                                    </ul>
+                                    <strong class="text-success">Highest Security</strong>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-warning"> PIN</h6>
+                                <small class="text-muted">
+                                    <ul class="mb-0 ps-3">
+                                        <li>4-8 digits only</li>
+                                        <li>Easy to remember</li>
+                                        <li>Fast to enter</li>
+                                    </ul>
+                                    <strong class="text-warning">Medium Security</strong>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-info"> Simple Password</h6>
+                                <small class="text-muted">
+                                    <ul class="mb-0 ps-3">
+                                        <li>4+ characters</li>
+                                        <li>Any characters</li>
+                                        <li>Easy to set</li>
+                                    </ul>
+                                    <strong class="text-info">Basic Security</strong>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Locked Entries Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"> Locked Entries (@LockedEntries.Count)</h5>
+                </div>
+                <div class="card-body">
+                    @if (LockedEntries.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Title</th>
+                                        <th>Mood</th>
+                                        <th>Type</th>
+                                        <th>Locked Since</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var entry in LockedEntries)
+                                    {
+                                        <tr>
+                                            <td>@entry.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                            <td>@entry.Title</td>
+                                            <td>@entry.PrimaryMood</td>
+                                            <td><span class="badge bg-danger">@entry.PasswordType</span></td>
+                                            <td>@(entry.LockedAt?.ToString("MMM dd, yyyy") ?? "N/A")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <small> To unlock entries, go to <strong>Journal</strong> page and click the  <strong>Unlock</strong> button on locked entries.</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary mb-0">
+                            <small>No locked entries yet. Go to the <strong>Journal</strong> page and click  <strong>Lock</strong> to protect your entries!</small>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Security Statistics -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"> Security Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Total Entries</h6>
+                            <h3 class="text-primary">@TotalEntries</h3>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Locked Entries</h6>
+                            <h3 class="text-warning">@LockedEntries.Count</h3>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Public Entries</h6>
+                            <h3 class="text-success">@(TotalEntries - LockedEntries.Count)</h3>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-top">
+                        <small class="text-muted">
+                            <strong>Protection Rate:</strong> 
+                            @if (TotalEntries > 0)
+                            {
+                                <span>@Math.Round((double)LockedEntries.Count / TotalEntries * 100, 1)% of entries protected</span>
+                            }
+                            else
+                            {
+                                <span>No entries yet</span>
+                            }
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Tips Panel -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"> Best Practices</h5>
+                </div>
+                <div class="card-body">
+                    <h6> Password Security:</h6>
+                    <ul class="small">
+                        <li>Use strong passwords (8+ chars)</li>
+                        <li>Mix uppercase, lowercase, numbers</li>
+                        <li>Don't share passwords</li>
+                        <li>Use different passwords for different entries</li>
+                        <li>Change passwords occasionally</li>
+                    </ul>
+
+                    <hr>
+
+                    <h6> Privacy Tips:</h6>
+                    <ul class="small">
+                        <li>Lock sensitive entries immediately</li>
+                        <li>Lock personal thoughts</li>
+                        <li>Lock financial information</li>
+                        <li>Lock relationship details</li>
+                        <li>Regular security reviews</li>
+                    </ul>
+
+                    <hr>
+
+                    <h6> Important:</h6>
+                    <ul class="small text-danger">
+                        <li> Passwords cannot be recovered!</li>
+                        <li> Lost passwords = Lost access</li>
+                        <li> Write important passwords down</li>
+                        <li> Keep safe backup location</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6> Quick Actions</h6>
+                    <p class="small mb-2">To lock an entry:</p>
+                    <ol class="small ps-3">
+                        <li>Go to <strong>Journal</strong></li>
+                        <li>Click  <strong>Lock</strong> button</li>
+                        <li>Choose password type</li>
+                        <li>Set your password</li>
+                        <li>Done! Entry is protected</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<JournalEntry> AllEntries = new();
+    private List<JournalEntry> LockedEntries = new();
+    private int TotalEntries = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            AllEntries = await JournalService.GetEntries();
+            TotalEntries = AllEntries.Count;
+            LockedEntries = AllEntries.Where(e => e.IsLocked).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading security data: {ex.Message}");
+        }
+    }
+}

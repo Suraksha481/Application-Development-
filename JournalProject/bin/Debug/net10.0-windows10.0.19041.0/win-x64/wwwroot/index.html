@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Journal App - Your Personal Journal</title>
+    <base href="/" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="JournalProject.styles.css" />
+    <link rel="icon" href="data:,">
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #ffffff;">
+        <div class="text-center" style="color: #333;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; border-color: rgba(0,0,0,0.1); border-right-color: #0066cc;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3" style="font-size: 1.1rem; font-weight: 500; color: #333;">Loading your journal app...</p>
+        </div>
+    </div>
+
+
+    <script>
+        // Disable automatic error dialog - let Blazor handle errors
+        // Only log errors to console for debugging
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript error:', e.error);
+            // Don't show error UI automatically
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled rejection:', e.reason);
+            // Don't show error UI automatically
+        });
+
+        // Make loadingPlaceholder have the theme (use CSS variables)
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-color') || '#ffffff';
+                document.getElementById('app').style.background = bg.trim() || '#ffffff';
+            } catch (e) {
+                document.getElementById('app').style.background = '#ffffff';
+            }
+        });
+    </script>
+
+    <script src="_framework/blazor.webview.js"></script>
+    <script src="theme.js"></script>
+    <script src="editor.js"></script>
+
+
+</body>
+
+</html>

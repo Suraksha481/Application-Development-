@@ -1,0 +1,313 @@
+@using JournalProject.Services
+
+<style>
+    .unlock-dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+    }
+
+    .unlock-dialog-content {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 450px;
+        padding: 0;
+        color: var(--text-primary);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .unlock-dialog-header {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        padding: 20px 24px;
+        border-radius: 12px 12px 0 0;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .unlock-dialog-header h5 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: white;
+        font-weight: 600;
+    }
+
+    .unlock-dialog-body {
+        padding: 28px 24px;
+        display: grid;
+        gap: 18px;
+    }
+
+    .unlock-info-message {
+        background-color: rgba(65, 105, 225, 0.15);
+        color: var(--link-color);
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1.5px solid var(--link-color);
+        font-size: 0.95rem;
+    }
+
+    .unlock-info-message strong {
+        font-weight: 600;
+    }
+
+    .unlock-password-hint {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .unlock-password-hint strong {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .unlock-form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+    }
+
+    .unlock-form-group {
+        display: grid;
+        gap: 8px;
+    }
+
+    .unlock-form-group input {
+        padding: 10px 12px;
+        border: 1.5px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+    }
+
+    .unlock-form-group input:focus {
+        outline: none;
+        border-color: #ff9800;
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+    }
+
+    .unlock-checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+    }
+
+    .unlock-checkbox-group input {
+        margin: 0;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .unlock-checkbox-group label {
+        margin: 0;
+        cursor: pointer;
+        color: #333333;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .unlock-error-message {
+        background-color: #fff3f3;
+        color: #d32f2f;
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1.5px solid #ffcdd2;
+        font-size: 0.95rem;
+    }
+
+    .unlock-error-message strong {
+        font-weight: 600;
+    }
+
+    .unlock-dialog-footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 20px 24px;
+        background-color: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .unlock-dialog-footer button {
+        padding: 11px 20px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .unlock-dialog-footer .btn-secondary {
+        background-color: #ffffff;
+        color: #666666;
+        border: 1.5px solid #e0e0e0;
+    }
+
+    .unlock-dialog-footer .btn-secondary:hover:not(:disabled) {
+        background-color: #f5f5f5;
+        border-color: #bdbdbd;
+    }
+
+    .unlock-dialog-footer .btn-warning {
+        background-color: #ff9800;
+        color: white;
+        border: none;
+    }
+
+    .unlock-dialog-footer .btn-warning:hover:not(:disabled) {
+        background-color: #f57c00;
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+    }
+
+    .unlock-dialog-footer button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+
+@if (IsVisible)
+{
+    <div class="unlock-dialog-overlay">
+        <div class="unlock-dialog-content">
+            <div class="unlock-dialog-header">
+                <h5>🔓 Unlock This Journal Entry</h5>
+            </div>
+
+            <div class="unlock-dialog-body">
+                <div class="unlock-info-message">
+                    <strong>This journal is locked.</strong><br />
+                    Enter your password to unlock and edit it.
+                </div>
+
+                @if (!string.IsNullOrEmpty(PasswordType))
+                {
+                    <div style="margin-bottom: 20px;">
+                        <small class="unlock-password-hint">
+                            <strong>Password Type:</strong> @PasswordType
+                        </small>
+                    </div>
+                }
+
+                <form @onsubmit="HandleUnlock">
+                    <div class="unlock-form-group">
+                        <label class="unlock-form-label">Enter Your Password *</label>
+                        <input type="@(ShowPassword ? "text" : "password")" 
+                               class="form-control" 
+                               @bind="Password" 
+                               placeholder="Enter your password"
+                               required 
+                               autofocus />
+                    </div>
+
+                    <div class="unlock-checkbox-group">
+                        <input type="checkbox" class="form-check-input" id="unlockShowPassword" @bind="ShowPassword" />
+                        <label for="unlockShowPassword">Show password</label>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="unlock-error-message">
+                            <strong>Error:</strong> @ErrorMessage
+                        </div>
+                    }
+
+                    <div class="unlock-dialog-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@IsLoading">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-warning" disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span>⏳ Verifying...</span>
+                            }
+                            else
+                            {
+                                <span>🔓 Unlock Journal</span>
+                            }
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string? PasswordType { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnUnlockConfirmed { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private string Password = "";
+    private bool ShowPassword = false;
+    private string ErrorMessage = "";
+    private bool IsLoading = false;
+
+    private async Task HandleUnlock()
+    {
+        if (string.IsNullOrEmpty(Password))
+        {
+            ErrorMessage = "Please enter your password";
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = "";
+
+        await Task.Delay(300);
+        await OnUnlockConfirmed.InvokeAsync(Password);
+        
+        IsLoading = false;
+    }
+
+    private async Task Cancel()
+    {
+        ResetForm();
+        await OnCancel.InvokeAsync();
+    }
+
+    private void ResetForm()
+    {
+        Password = "";
+        ShowPassword = false;
+        ErrorMessage = "";
+    }
+
+    public void SetError(string message)
+    {
+        ErrorMessage = message;
+    }
+
+    public void ClearError()
+    {
+        ErrorMessage = "";
+    }
+}

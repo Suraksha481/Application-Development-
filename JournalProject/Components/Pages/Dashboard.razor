@@ -1,0 +1,575 @@
+@page "/dashboard"
+@using JournalProject.Services
+@using JournalProject.Models
+@inject JournalService JournalService
+@inject AnalyticsService AnalyticsService
+@inject StreakService StreakService
+@inject SecurityService SecurityService
+
+<div class="container-fluid mt-4">
+    <h1>Dashboard & Analytics</h1>
+
+    <!-- Date Range Selector & Content Search -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="dashStartDate">Start Date:</label>
+                            <input type="date" class="form-control" id="dashStartDate" @bind="DashStartDate" @bind:event="onchange">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dashEndDate">End Date:</label>
+                            <input type="date" class="form-control" id="dashEndDate" @bind="DashEndDate" @bind:event="onchange">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="contentSearch">Search by Content Or Tag:</label>
+                            <input type="text" class="form-control" id="contentSearch" @bind="ContentSearchQuery" placeholder="Search journals...">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-success w-100" @onclick="PerformSearch">Apply Date Filter</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Entries (Search Results) -->
+    @if (HasSearched)
+    {
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            📋 Recent Entries 
+                            @if (FilteredEntries.Count > 0)
+                            {
+                                <span class="badge bg-info ms-2">@FilteredEntries.Count entries</span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (FilteredEntries.Count > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Content</th>
+                                            <th>Primary Mood</th>
+                                            <th>Tags</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var entry in FilteredEntries.OrderByDescending(e => e.EntryDate))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@entry.EntryDate.ToString("yyyy-MM-dd")</strong>
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(entry.Content))
+                                                    {
+                                                        var preview = System.Text.RegularExpressions.Regex.Replace(entry.Content, "<[^>]*>", "");
+                                                        <small>@((preview.Length > 100 ? preview.Substring(0, 100) + "..." : preview))</small>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(entry.PrimaryMood))
+                                                    {
+                                                        <span>@GetMoodIcon(entry.PrimaryMood) @entry.PrimaryMood</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (entry.Tags.Count > 0)
+                                                    {
+                                                        @foreach (var tag in entry.Tags.Take(3))
+                                                        {
+                                                            <span class="badge bg-success me-1">@tag</span>
+                                                        }
+                                                        @if (entry.Tags.Count > 3)
+                                                        {
+                                                            <span class="badge bg-secondary">+@(entry.Tags.Count - 3)</span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <small class="text-muted">No tags</small>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <a href="/add-journal/@entry.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                ⚠️ No entries found matching your search criteria.
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Streak and Key Metrics -->
+    <div class="row mb-4">
+        @if (IsLoading)
+        {
+            <div class="col-md-12">
+                <div class="alert alert-info" role="alert">
+                    <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                    Loading analytics...
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="col-md-12">
+                <div class="alert alert-danger" role="alert">
+                    ❌ @ErrorMessage
+                </div>
+            </div>
+        }
+        else if (TotalEntries > 0)
+        {
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Current Streak</h6>
+                        <h2 class="text-primary">@CurrentStreak</h2>
+                        <p class="text-muted">consecutive days</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Longest Streak</h6>
+                        <h2 class="text-success">@LongestStreak</h2>
+                        <p class="text-muted">days</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Total Entries</h6>
+                        <h2 class="text-info">@TotalEntries</h2>
+                        <p class="text-muted">in selected period</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Avg Word Count</h6>
+                        <h2 class="text-warning">@AverageWordCount</h2>
+                        <p class="text-muted">words per entry</p>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="col-md-12">
+                <div class="alert alert-info" role="alert">
+                    📝 No journal entries in the selected period. Start adding entries to see your stats!
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Mood Distribution & Most Frequent Mood -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Mood Distribution</h5>
+                </div>
+                <div class="card-body">
+                    @if (MoodDistribution.Count > 0)
+                    {
+                        <div class="mood-chart">
+                            @foreach (var mood in MoodDistribution)
+                            {
+                                var percentage = (mood.Value * 100) / MoodDistribution.Values.Sum();
+                                <div class="mood-item">
+                                    <div class="mood-label d-flex justify-content-between">
+                                        <span>@mood.Key</span>
+                                        <span>@mood.Value (@percentage.ToString("F1")%)</span>
+                                    </div>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" style="width: @percentage%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No mood data available.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Most Frequent Mood</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h3 class="text-success">@MostFrequentMood</h3>
+                    <p class="text-muted">Your most common mood in this period</p>
+                    <div class="emotion-icon" style="font-size: 60px;">
+                        @GetMoodIcon(MostFrequentMood)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Most Used Tags -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Most Used Tags</h5>
+                </div>
+                <div class="card-body">
+                    @if (MostUsedTags.Count > 0)
+                    {
+                        <div class="tags-chart">
+                            @foreach (var tag in MostUsedTags.Take(10))
+                            {
+                                var maxCount = MostUsedTags.Max(t => t.Value);
+                                var percentage = (tag.Value * 100) / maxCount;
+                                <div class="tag-item">
+                                    <div class="tag-label d-flex justify-content-between">
+                                        <span>#@tag.Key</span>
+                                        <span>@tag.Value</span>
+                                    </div>
+                                    <div class="progress" style="height: 15px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: @percentage%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No tag data available.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Breakdown by Category -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Category Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    @if (CategoryBreakdown.Count > 0)
+                    {
+                        <div class="category-breakdown">
+                            @foreach (var category in CategoryBreakdown)
+                            {
+                                <div class="category-item">
+                                    <div class="category-label d-flex justify-content-between">
+                                        <span>@category.Key</span>
+                                        <span>@category.Value.ToString("F1")%</span>
+                                    </div>
+                                    <div class="progress" style="height: 15px;">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: @category.Value%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No category data available.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Word Count Trends -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">📊 Word Count Trends</h5>
+                </div>
+                <div class="card-body">
+                    @if (IsLoading)
+                    {
+                        <p class="text-muted"><small>Loading word count data...</small></p>
+                    }
+                    else if (WordCountTrends != null && WordCountTrends.Count > 0)
+                    {
+                        <div class="word-count-chart">
+                            @{
+                                var sortedTrends = WordCountTrends.OrderBy(t => t.Date).ToList();
+                                var maxWords = sortedTrends.Max(t => t.WordCount);
+                            }
+                            @foreach (var trend in sortedTrends)
+                            {
+                                var percentage = maxWords > 0 ? (trend.WordCount * 100) / maxWords : 0;
+                                <div class="trend-item" title="@trend.Date.ToString("MMM d, yyyy"): @trend.WordCount words">
+                                    <div class="trend-bar" style="height: @percentage%; min-height: 5px;"></div>
+                                    <small class="trend-label">@trend.WordCount</small>
+                                </div>
+                            }
+                        </div>
+                        <div class="mt-2 text-center text-muted">
+                            <small>📅 @sortedTrends.First().Date.ToString("MMM d") → @sortedTrends.Last().Date.ToString("MMM d") | Average: @(sortedTrends.Average(t => t.WordCount).ToString("F0")) words</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted"><small>❌ No word count data in this date range. Create some entries to see trends!</small></p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Missed Days -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="mb-0">⏰ Missed Days</h5>
+                    <span class="badge bg-@(MissedDays?.Count > 0 ? "warning" : "success")">@(MissedDays?.Count ?? 0) days</span>
+                </div>
+                <div class="card-body">
+                    @if (IsLoading)
+                    {
+                        <p class="text-muted"><small>Loading missed days data...</small></p>
+                    }
+                    else if (MissedDays != null && MissedDays.Count > 0)
+                    {
+                        <div class="missed-days-list">
+                            @foreach (var date in MissedDays.OrderBy(d => d).Take(20))
+                            {
+                                <span class="badge bg-danger me-2 mb-2">📅 @date.ToString("MMM dd")</span>
+                            }
+                            @if (MissedDays.Count > 20)
+                            {
+                                <span class="text-muted"><small>... and @(MissedDays.Count - 20) more dates</small></span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-success"><small>✅ Perfect! No missed days in the selected period - great consistency!</small></p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .mood-item, .tag-item, .category-item, .trend-item {
+        margin-bottom: 15px;
+    }
+
+    .word-count-chart {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        height: 220px;
+        gap: 4px;
+        background-color: var(--bg-tertiary);
+        padding: 15px;
+        border-radius: 5px;
+        min-height: 200px;
+    }
+
+    .trend-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        flex: 1;
+        position: relative;
+    }
+
+    .trend-bar {
+        width: 100%;
+        min-height: 20px;
+        border-radius: 3px 3px 0 0;
+        background-color: var(--primary-color);
+        transition: background-color 0.3s ease;
+    }
+
+    .trend-bar:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .trend-label {
+        font-size: 11px;
+        font-weight: bold;
+        white-space: nowrap;
+        color: var(--text-secondary);
+    }
+
+    .missed-days-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .emotion-icon {
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+</style>
+
+@code {
+    private DateTime DashStartDate = DateTime.Today.AddMonths(-1);
+    private DateTime DashEndDate = DateTime.Today;
+    private bool IsLoading = false;
+    private string? ErrorMessage = null;
+    private string ContentSearchQuery = "";
+    private bool HasSearched = false;
+    private List<JournalEntry> FilteredEntries = new();
+    
+    private int CurrentStreak;
+    private int LongestStreak;
+    private int TotalEntries;
+    private double AverageWordCount;
+    private string MostFrequentMood = "";
+    private Dictionary<string, int> MoodDistribution = new();
+    private Dictionary<string, int> MostUsedTags = new();
+    private Dictionary<string, double> CategoryBreakdown = new();
+    private List<DateTime> MissedDays = new();
+    private List<(DateTime Date, int WordCount)> WordCountTrends = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateAnalytics();
+    }
+
+    private async Task PerformSearch()
+    {
+        try
+        {
+            IsLoading = true;
+            HasSearched = true;
+            
+            // Get all entries within date range
+            var allEntries = await JournalService.GetAllAsync();
+            var dateFilteredEntries = allEntries
+                .Where(e => e.EntryDate.Date >= DashStartDate.Date && e.EntryDate.Date <= DashEndDate.Date)
+                .ToList();
+
+            // Filter by content search if provided
+            if (!string.IsNullOrWhiteSpace(ContentSearchQuery))
+            {
+                var searchQuery = ContentSearchQuery.ToLower();
+                FilteredEntries = dateFilteredEntries
+                    .Where(e => 
+                        (e.Title?.ToLower().Contains(searchQuery) ?? false) ||
+                        (e.Content?.ToLower().Contains(searchQuery) ?? false) ||
+                        (e.Category?.ToLower().Contains(searchQuery) ?? false) ||
+                        (e.Tags != null && e.Tags.Any(t => t.ToLower().Contains(searchQuery)))
+                    )
+                    .ToList();
+            }
+            else
+            {
+                FilteredEntries = dateFilteredEntries;
+            }
+
+            // Update analytics with the date range
+            await UpdateAnalytics();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error during search: {ex.Message}";
+            Console.WriteLine($"Error during search: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task UpdateAnalytics()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var streak = await StreakService.GetStreakAsync();
+            CurrentStreak = streak?.CurrentStreak ?? 0;
+            LongestStreak = streak?.LongestStreak ?? 0;
+            TotalEntries = await AnalyticsService.GetTotalEntriesAsync(DashStartDate, DashEndDate);
+            AverageWordCount = await AnalyticsService.GetAverageWordCountAsync(DashStartDate, DashEndDate);
+            MostFrequentMood = await AnalyticsService.GetMostFrequentMoodAsync(DashStartDate, DashEndDate) ?? "N/A";
+            MoodDistribution = await AnalyticsService.GetMoodDistributionAsync(DashStartDate, DashEndDate) ?? new();
+            MostUsedTags = await AnalyticsService.GetMostUsedTagsAsync(10, DashStartDate, DashEndDate) ?? new();
+            CategoryBreakdown = await AnalyticsService.GetCategoryDistributionPercentageAsync(DashStartDate, DashEndDate) ?? new();
+            MissedDays = await StreakService.GetMissedDaysAsync(DashStartDate, DashEndDate) ?? new();
+            WordCountTrends = await AnalyticsService.GetWordCountTrendsAsync(DashStartDate, DashEndDate) ?? new();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error loading analytics: {ex.Message}";
+            Console.WriteLine($"Error loading analytics: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private string GetMoodIcon(string mood)
+    {
+        return mood switch
+        {
+            "Happy" => "😊",
+            "Excited" => "🤩",
+            "Relaxed" => "😌",
+            "Grateful" => "🙏",
+            "Confident" => "💪",
+            "Calm" => "😊",
+            "Thoughtful" => "🤔",
+            "Curious" => "🧐",
+            "Nostalgic" => "💭",
+            "Bored" => "😐",
+            "Sad" => "😔",
+            "Angry" => "😠",
+            "Stressed" => "😰",
+            "Lonely" => "😞",
+            "Anxious" => "😟",
+            _ => "😊"
+        };
+    }
+}

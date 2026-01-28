@@ -1,0 +1,181 @@
+@using JournalProject.Models
+
+<div class="mood-selector">
+    <!-- Primary Mood Selection -->
+    <div class="mb-4">
+        <label class="form-label fw-bold">Primary Mood (Required) <span class="text-danger">*</span></label>
+        <select class="form-select" @onchange="UpdatePrimaryMood">
+            <option value="">Select a mood...</option>
+            <optgroup label="😊 Positive Moods">
+                <option value="Happy">Happy</option>
+                <option value="Excited">Excited</option>
+                <option value="Relaxed">Relaxed</option>
+                <option value="Grateful">Grateful</option>
+                <option value="Confident">Confident</option>
+            </optgroup>
+            <optgroup label="😐 Neutral Moods">
+                <option value="Calm">Calm</option>
+                <option value="Thoughtful">Thoughtful</option>
+                <option value="Curious">Curious</option>
+                <option value="Nostalgic">Nostalgic</option>
+                <option value="Bored">Bored</option>
+            </optgroup>
+            <optgroup label="😔 Negative Moods">
+                <option value="Sad">Sad</option>
+                <option value="Angry">Angry</option>
+                <option value="Stressed">Stressed</option>
+                <option value="Lonely">Lonely</option>
+                <option value="Anxious">Anxious</option>
+            </optgroup>
+        </select>
+    </div>
+
+    <!-- Secondary Mood Selection (Only shown if primary mood is selected) -->
+    @if (!string.IsNullOrEmpty(SelectedPrimaryMood))
+    {
+        <div class="mb-4">
+            <label class="form-label fw-bold">Secondary Mood (Optional)</label>
+            <p class="text-muted small">Select an additional mood from the same category as your primary mood</p>
+            
+            <select class="form-select" @onchange="UpdateSecondaryMood">
+                <option value="">None</option>
+                @foreach (var mood in GetAvailableSecondaryMoods())
+                {
+                    <option value="@mood">@mood</option>
+                }
+            </select>
+        </div>
+    }
+
+    <!-- Selected Moods Summary -->
+    @if (!string.IsNullOrEmpty(SelectedPrimaryMood))
+    {
+        <div class="alert alert-info">
+            <strong>Selected Moods:</strong>
+            <div class="mt-2">
+                <span class="badge bg-primary me-2 p-2">
+                    @GetMoodEmoji(SelectedPrimaryMood) @SelectedPrimaryMood (Primary)
+                </span>
+                @if (!string.IsNullOrEmpty(SelectedSecondaryMood))
+                {
+                    <span class="badge bg-secondary p-2">
+                        @GetMoodEmoji(SelectedSecondaryMood) @SelectedSecondaryMood (Secondary)
+                    </span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .mood-selector {
+        background-color: var(--bg-tertiary);
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .form-select {
+        border: 2px solid var(--border-color);
+        transition: border-color 0.2s ease;
+    }
+
+    .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(74, 158, 255, 0.25);
+    }
+
+    .badge {
+        font-size: 13px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string SelectedPrimaryMood { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> OnPrimaryMoodChanged { get; set; }
+
+    [Parameter]
+    public string SelectedSecondaryMood { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> OnSecondaryMoodChanged { get; set; }
+
+    private async Task UpdatePrimaryMood(ChangeEventArgs e)
+    {
+        SelectedPrimaryMood = e.Value?.ToString() ?? "";
+        
+        // Clear secondary mood if it's from a different category
+        if (!string.IsNullOrEmpty(SelectedSecondaryMood))
+        {
+            if (!GetAvailableSecondaryMoods().Contains(SelectedSecondaryMood))
+            {
+                SelectedSecondaryMood = "";
+                await OnSecondaryMoodChanged.InvokeAsync("");
+            }
+        }
+        
+        await OnPrimaryMoodChanged.InvokeAsync(SelectedPrimaryMood);
+    }
+
+    private async Task UpdateSecondaryMood(ChangeEventArgs e)
+    {
+        SelectedSecondaryMood = e.Value?.ToString() ?? "";
+        await OnSecondaryMoodChanged.InvokeAsync(SelectedSecondaryMood);
+    }
+
+    private List<string> GetAvailableSecondaryMoods()
+    {
+        if (string.IsNullOrEmpty(SelectedPrimaryMood))
+            return new List<string>();
+
+        var category = GetMoodCategory(SelectedPrimaryMood);
+        var allMoodsInCategory = category switch
+        {
+            "Positive" => new List<string> { "Happy", "Excited", "Relaxed", "Grateful", "Confident" },
+            "Neutral" => new List<string> { "Calm", "Thoughtful", "Curious", "Nostalgic", "Bored" },
+            "Negative" => new List<string> { "Sad", "Angry", "Stressed", "Lonely", "Anxious" },
+            _ => new List<string>()
+        };
+
+        // Remove the primary mood from available options
+        allMoodsInCategory.Remove(SelectedPrimaryMood);
+        return allMoodsInCategory;
+    }
+
+    private string GetMoodCategory(string mood)
+    {
+        return mood switch
+        {
+            "Happy" or "Excited" or "Relaxed" or "Grateful" or "Confident" => "Positive",
+            "Calm" or "Thoughtful" or "Curious" or "Nostalgic" or "Bored" => "Neutral",
+            "Sad" or "Angry" or "Stressed" or "Lonely" or "Anxious" => "Negative",
+            _ => ""
+        };
+    }
+
+    private string GetMoodEmoji(string mood)
+    {
+        return mood switch
+        {
+            "Happy" => "😊",
+            "Excited" => "🤩",
+            "Relaxed" => "😌",
+            "Grateful" => "🙏",
+            "Confident" => "💪",
+            "Calm" => "😊",
+            "Thoughtful" => "🤔",
+            "Curious" => "🧐",
+            "Nostalgic" => "💭",
+            "Bored" => "😐",
+            "Sad" => "😔",
+            "Angry" => "😠",
+            "Stressed" => "😰",
+            "Lonely" => "😞",
+            "Anxious" => "😟",
+            _ => "😊"
+        };
+    }
+}

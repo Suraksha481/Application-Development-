@@ -1,0 +1,377 @@
+@page "/journal"
+@using JournalProject.Services
+@using JournalProject.Models
+@inject JournalService JournalService
+@inject SecurityService SecurityService
+@inject NavigationManager NavigationManager
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📖 My Journals</h2>
+        <a href="/add-journal" class="btn btn-primary">+ Add New Journal</a>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="alert alert-info">Loading your journals...</div>
+    }
+    else if (Entries == null || Entries.Count == 0)
+    {
+        <div class="alert alert-secondary text-center py-5">
+            <h4>No journals yet</h4>
+            <p>Start writing your first journal entry!</p>
+            <a href="/add-journal" class="btn btn-primary">Write Your First Journal</a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var entry in Entries)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">@entry.Title</h5>
+                                <small class="text-muted">@entry.EntryDate.ToString("dddd, MMMM dd, yyyy")</small>
+                            </div>
+                            @if (!entry.IsLocked && !string.IsNullOrEmpty(entry.PrimaryMood))
+                            {
+                                <span class="badge bg-info">@entry.PrimaryMood</span>
+                            }
+                        </div>
+                        @if (!entry.IsLocked)
+                        {
+                            <div class="card-body">
+                                <p class="card-text text-truncate" style="max-height: 80px; overflow: hidden;">
+                                    @entry.Content
+                                </p>
+                                <div class="mb-3">
+                                    @if (!string.IsNullOrEmpty(entry.SecondaryMood1))
+                                    {
+                                        <span class="badge bg-secondary">@entry.SecondaryMood1</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(entry.SecondaryMood2))
+                                    {
+                                        <span class="badge bg-secondary">@entry.SecondaryMood2</span>
+                                    }
+                                </div>
+                                <small class="text-muted d-block mb-2">
+                                    <strong>Word Count:</strong> @entry.WordCount words
+                                </small>
+                                @if (entry.Tags.Count > 0)
+                                {
+                                    <div class="mb-2">
+                                        <strong>Tags:</strong><br />
+                                        @foreach (var tag in entry.Tags)
+                                        {
+                                            <span class="badge bg-warning text-dark me-1">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-body">
+                                <p class="text-muted text-center">
+                                    <strong>🔒 This journal is locked</strong><br/>
+                                    <small>Unlock to view details</small>
+                                </p>
+                            </div>
+                        }
+                        <div class="card-footer bg-white">
+                            <button class="btn btn-sm btn-outline-info" @onclick="() => ViewEntry(entry)">
+                                👁️ View
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditEntry(entry.Id)" 
+                                    disabled="@entry.IsLocked" title="@(entry.IsLocked ? "Unlock journal to edit" : "")">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteEntry(entry.Id)" 
+                                    disabled="@entry.IsLocked" title="@(entry.IsLocked ? "Unlock journal to delete" : "")">
+                                🗑️ Delete
+                            </button>
+                            @if (entry.IsLocked)
+                            {
+                                <button class="btn btn-sm btn-outline-warning" @onclick="() => OpenUnlockDialog(entry)">
+                                    🔓 Unlock
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => OpenLockDialog(entry)">
+                                    🔒 Lock
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- View Journal Dialog -->
+@if (ShowViewDialog)
+{
+    <ViewJournalDialog 
+        IsVisible="true"
+        JournalEntry="@SelectedEntry"
+        OnClose="CloseViewDialog"
+        OnEntryDeleted="LoadEntries" />
+}
+
+<!-- View Password Dialog (for locked journals) -->
+@if (ShowViewPasswordDialog)
+{
+    <ViewPasswordDialog 
+        IsVisible="true"
+        PasswordType="@SelectedEntry?.PasswordType"
+        OnPasswordConfirmed="HandleViewLockedJournal"
+        OnCancel="CloseViewPasswordDialog" />
+}
+
+<!-- Lock Dialog -->
+@if (ShowLockDialog)
+{
+    <LockJournalDialog 
+        IsVisible="true"
+        OnLockConfirmed="HandleLockConfirmed"
+        OnCancel="CloseLockDialog" />
+}
+
+<!-- Unlock Dialog -->
+@if (ShowUnlockDialog)
+{
+    <UnlockJournalDialog 
+        IsVisible="true"
+        PasswordType="@SelectedEntry?.PasswordType"
+        OnUnlockConfirmed="HandleUnlockConfirmed"
+        OnCancel="CloseUnlockDialog" />
+}
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .card-text {
+        line-height: 1.6;
+    }
+</style>
+
+@code {
+    private List<JournalEntry>? Entries;
+    private bool IsLoading = true;
+    private JournalEntry? SelectedEntry;
+    private bool ShowViewDialog = false;
+    private bool ShowViewPasswordDialog = false;
+    private bool ShowLockDialog = false;
+    private bool ShowUnlockDialog = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        IsLoading = true;
+        try
+        {
+            Entries = await JournalService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading entries: {ex.Message}");
+            Entries = new();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ViewEntry(JournalEntry entry)
+    {
+        if (entry.IsLocked)
+        {
+            SelectedEntry = entry;
+            ShowViewPasswordDialog = true;
+        }
+        else
+        {
+            NavigationManager.NavigateTo($"/view-journal/{entry.Id}");
+        }
+    }
+
+    private void CloseViewDialog()
+    {
+        ShowViewDialog = false;
+        SelectedEntry = null;
+    }
+
+    private void CloseViewPasswordDialog()
+    {
+        ShowViewPasswordDialog = false;
+        SelectedEntry = null;
+    }
+
+    private async Task HandleViewLockedJournal(string password)
+    {
+        if (SelectedEntry == null) return;
+
+        try
+        {
+            var entry = await JournalService.GetEntryIfUnlockedAsync(SelectedEntry.Id, password, SecurityService);
+            
+            if (entry == null)
+            {
+                var mainPage = Application.Current?.Windows[0]?.Page;
+                if (mainPage != null)
+                {
+                    await mainPage.DisplayAlertAsync("Error", "Incorrect password. Cannot view journal.", "OK");
+                }
+                return;
+            }
+
+            CloseViewPasswordDialog();
+            SelectedEntry = entry;
+            ShowViewDialog = true;
+        }
+        catch (Exception ex)
+        {
+            var mainPage = Application.Current?.Windows[0]?.Page;
+            if (mainPage != null)
+            {
+                await mainPage.DisplayAlertAsync("Error", $"Error: {ex.Message}", "OK");
+            }
+        }
+    }
+
+    private void EditEntry(int entryId)
+    {
+        NavigationManager.NavigateTo($"/add-journal/{entryId}");
+    }
+
+    private async Task DeleteEntry(int entryId)
+    {
+        bool confirmed = await ConfirmDelete();
+        if (confirmed)
+        {
+            try
+            {
+                JournalService.DeleteEntry(entryId);
+                await LoadEntries();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting entry: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task<bool> ConfirmDelete()
+    {
+        var mainPage = Application.Current?.Windows[0]?.Page;
+        if (mainPage != null)
+        {
+            return await mainPage.DisplayAlertAsync("Confirm Delete", "Are you sure you want to delete this journal?", "Delete", "Cancel");
+        }
+        return false;
+    }
+
+    private void OpenLockDialog(JournalEntry entry)
+    {
+        SelectedEntry = entry;
+        ShowLockDialog = true;
+    }
+
+    private void CloseLockDialog()
+    {
+        ShowLockDialog = false;
+        SelectedEntry = null;
+    }
+
+    private void OpenUnlockDialog(JournalEntry entry)
+    {
+        SelectedEntry = entry;
+        ShowUnlockDialog = true;
+    }
+
+    private void CloseUnlockDialog()
+    {
+        ShowUnlockDialog = false;
+        SelectedEntry = null;
+    }
+
+    private async Task HandleLockConfirmed((string password, string passwordType) lockData)
+    {
+        if (SelectedEntry == null) return;
+
+        try
+        {
+            await JournalService.LockEntryAsync(SelectedEntry.Id, lockData.password, lockData.passwordType, SecurityService);
+            
+            CloseLockDialog();
+            await LoadEntries();
+            
+            var mainPage = Application.Current?.Windows[0]?.Page;
+            if (mainPage != null)
+            {
+                await mainPage.DisplayAlertAsync("Success", "Journal locked successfully!", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            var mainPage = Application.Current?.Windows[0]?.Page;
+            if (mainPage != null)
+            {
+                await mainPage.DisplayAlertAsync("Error", $"Failed to lock journal: {ex.Message}", "OK");
+            }
+        }
+    }
+
+    private async Task HandleUnlockConfirmed(string password)
+    {
+        if (SelectedEntry == null) return;
+
+        try
+        {
+            bool isUnlocked = await JournalService.UnlockEntryAsync(SelectedEntry.Id, password, SecurityService);
+            
+            if (!isUnlocked)
+            {
+                var mainPage = Application.Current?.Windows[0]?.Page;
+                if (mainPage != null)
+                {
+                    await mainPage.DisplayAlertAsync("Error", "Incorrect password. Please try again.", "OK");
+                }
+                return;
+            }
+
+            CloseUnlockDialog();
+            await LoadEntries();
+            
+            var page = Application.Current?.Windows[0]?.Page;
+            if (page != null)
+            {
+                await page.DisplayAlertAsync("Success", "Journal unlocked successfully!", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            var mainPage = Application.Current?.Windows[0]?.Page;
+            if (mainPage != null)
+            {
+                await mainPage.DisplayAlertAsync("Error", $"Error: {ex.Message}", "OK");
+            }
+        }
+    }
+}

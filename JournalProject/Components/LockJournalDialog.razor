@@ -1,0 +1,354 @@
+@using JournalProject.Services
+@inject SecurityService SecurityService
+
+<style>
+    .lock-dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+    }
+
+    .lock-dialog-content {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 500px;
+        max-height: 85vh;
+        overflow-y: auto;
+        color: #333333;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+    }
+
+    .lock-dialog-header {
+        background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+        color: white;
+        padding: 20px 24px;
+        border-radius: 12px 12px 0 0;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .lock-dialog-header h5 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: white;
+        font-weight: 600;
+    }
+
+    .lock-dialog-body {
+        padding: 28px 24px;
+        display: grid;
+        gap: 18px;
+    }
+
+    .lock-form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #333333;
+        font-size: 0.95rem;
+    }
+
+    .lock-form-group {
+        display: grid;
+        gap: 8px;
+    }
+
+    .lock-form-select,
+    .lock-form-group input {
+        padding: 10px 12px;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .lock-form-select:focus,
+    .lock-form-group input:focus {
+        outline: none;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    .lock-form-select {
+        background-color: #ffffff;
+        cursor: pointer;
+    }
+
+    .lock-password-hint {
+        color: #666666;
+        display: block;
+        margin-top: 6px;
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+
+    .lock-checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+    }
+
+    .lock-checkbox-group input {
+        margin: 0;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .lock-checkbox-group label {
+        margin: 0;
+        cursor: pointer;
+        color: #333333;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .lock-error-message {
+        background-color: #fff3f3;
+        color: #d32f2f;
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1.5px solid #ffcdd2;
+        font-size: 0.95rem;
+        grid-column: 1 / -1;
+    }
+
+    .lock-error-message strong {
+        font-weight: 600;
+    }
+
+    .lock-warning-message {
+        background-color: #fff8e1;
+        color: #333333;
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1.5px solid #ffe082;
+        font-size: 0.95rem;
+        grid-column: 1 / -1;
+    }
+
+    .lock-warning-message strong {
+        color: #f57f17;
+        font-weight: 600;
+    }
+
+    .lock-warning-message ul {
+        margin: 8px 0 0 0;
+        padding-left: 20px;
+    }
+
+    .lock-warning-message li {
+        color: #333333;
+        margin: 4px 0;
+    }
+
+    .lock-dialog-footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 20px 24px;
+        background-color: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .lock-dialog-footer button {
+        padding: 11px 20px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .lock-dialog-footer .btn-secondary {
+        background-color: #ffffff;
+        color: #666666;
+        border: 1.5px solid #e0e0e0;
+    }
+
+    .lock-dialog-footer .btn-secondary:hover {
+        background-color: #f5f5f5;
+        border-color: #bdbdbd;
+    }
+
+    .lock-dialog-footer .btn-success {
+        background-color: #4caf50;
+        color: white;
+    }
+
+    .lock-dialog-footer .btn-success:hover {
+        background-color: #45a049;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+</style>
+
+@if (IsVisible)
+{
+    <div class="lock-dialog-overlay">
+        <div class="lock-dialog-content">
+            <div class="lock-dialog-header">
+                <h5>🔒 Lock This Journal Entry</h5>
+            </div>
+
+            <div class="lock-dialog-body">
+                <form @onsubmit="HandleLock">
+                    <div class="lock-form-group">
+                        <label class="lock-form-label">Select Password Type *</label>
+                        <select class="form-select lock-form-select" @bind="SelectedPasswordType" required>
+                            <option value="">Choose password type...</option>
+                            <option value="Strong">Strong Password (8+ chars, uppercase, lowercase, digit)</option>
+                            <option value="PIN">PIN (4-8 digits only)</option>
+                            <option value="Simple">Simple Password (4+ chars)</option>
+                        </select>
+                        @if (!string.IsNullOrEmpty(SelectedPasswordType))
+                        {
+                            <small class="lock-password-hint">
+                                @GetPasswordTypeDescription(SelectedPasswordType)
+                            </small>
+                        }
+                    </div>
+
+                    <div class="lock-form-group">
+                        <label class="lock-form-label">Enter Password *</label>
+                        <input type="@(ShowPassword ? "text" : "password")" 
+                               class="form-control" 
+                               @bind="Password" 
+                               placeholder="Enter your password"
+                               required />
+                    </div>
+
+                    <div class="lock-form-group">
+                        <label class="lock-form-label">Confirm Password *</label>
+                        <input type="@(ShowPassword ? "text" : "password")" 
+                               class="form-control" 
+                               @bind="ConfirmPassword" 
+                               placeholder="Confirm your password"
+                               required />
+                    </div>
+
+                    <div class="lock-checkbox-group">
+                        <input type="checkbox" class="form-check-input" id="lockShowPassword" @bind="ShowPassword" />
+                        <label for="lockShowPassword">Show password</label>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="lock-error-message">
+                            <strong>Error:</strong> @ErrorMessage
+                        </div>
+                    }
+
+                    @if (ValidationIssues.Count > 0)
+                    {
+                        <div class="lock-warning-message">
+                            <strong>Password Requirements:</strong>
+                            <ul>
+                                @foreach (var issue in ValidationIssues)
+                                {
+                                    <li>@issue</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <div class="lock-dialog-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            🔒 Confirm Lock
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<(string password, string passwordType)> OnLockConfirmed { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private string SelectedPasswordType = "";
+    private string Password = "";
+    private string ConfirmPassword = "";
+    private bool ShowPassword = false;
+    private string ErrorMessage = "";
+    private List<string> ValidationIssues = new();
+
+    private async Task HandleLock()
+    {
+        ErrorMessage = "";
+        ValidationIssues.Clear();
+
+        if (string.IsNullOrEmpty(SelectedPasswordType))
+        {
+            ErrorMessage = "Please select a password type";
+            return;
+        }
+
+        if (Password != ConfirmPassword)
+        {
+            ErrorMessage = "Passwords do not match";
+            return;
+        }
+
+        var validation = SecurityService.ValidateLockPassword(Password, SelectedPasswordType);
+        if (!validation.isValid)
+        {
+            ValidationIssues = validation.issues;
+            return;
+        }
+
+        await OnLockConfirmed.InvokeAsync((Password, SelectedPasswordType));
+        ResetForm();
+    }
+
+    private async Task Cancel()
+    {
+        ResetForm();
+        await OnCancel.InvokeAsync();
+    }
+
+    private string GetPasswordTypeDescription(string type)
+    {
+        return type switch
+        {
+            "Strong" => "Requires at least 8 characters with uppercase, lowercase, and digit",
+            "PIN" => "4 to 8 digit PIN for quick security",
+            "Simple" => "Simple 4+ character password",
+            _ => ""
+        };
+    }
+
+    private void ResetForm()
+    {
+        SelectedPasswordType = "";
+        Password = "";
+        ConfirmPassword = "";
+        ShowPassword = false;
+        ErrorMessage = "";
+        ValidationIssues.Clear();
+    }
+}

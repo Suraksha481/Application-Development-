@@ -1,0 +1,301 @@
+@page "/search-filter"
+@using JournalProject.Services
+@using JournalProject.Models
+@inject JournalService JournalService
+@inject SearchService SearchService
+@inject NavigationManager NavigationManager
+
+<div class="container mt-4">
+    <h2>Search & Filter Entries</h2>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Filter Options</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Search by Content -->
+                    <div class="mb-3">
+                        <label for="searchTerm" class="form-label">Search Content</label>
+                        <input type="text" class="form-control" id="searchTerm" 
+                               @bind="SearchTerm" 
+                               placeholder="Enter search term...">
+                    </div>
+
+                    <!-- Filter by Mood -->
+                    <div class="mb-3">
+                        <label for="moodFilter" class="form-label">Filter by Mood</label>
+                        <select class="form-select" id="moodFilter" @onchange="FilterByMood">
+                            <option value="">All Moods</option>
+                            <optgroup label="Positive">
+                                <option value="Happy">😊 Happy</option>
+                                <option value="Excited">😊 Excited</option>
+                                <option value="Relaxed">😊 Relaxed</option>
+                                <option value="Grateful">😊 Grateful</option>
+                                <option value="Confident">😊 Confident</option>
+                            </optgroup>
+                            <optgroup label="Neutral">
+                                <option value="Calm">😐 Calm</option>
+                                <option value="Thoughtful">😐 Thoughtful</option>
+                                <option value="Curious">😐 Curious</option>
+                                <option value="Nostalgic">😐 Nostalgic</option>
+                                <option value="Bored">😐 Bored</option>
+                            </optgroup>
+                            <optgroup label="Negative">
+                                <option value="Sad">😔 Sad</option>
+                                <option value="Angry">😔 Angry</option>
+                                <option value="Stressed">😔 Stressed</option>
+                                <option value="Lonely">😔 Lonely</option>
+                                <option value="Anxious">😔 Anxious</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Filter by Tag -->
+                    <div class="mb-3">
+                        <label for="tagFilter" class="form-label">Filter by Tag</label>
+                        <select class="form-select" id="tagFilter" @onchange="FilterByTag">
+                            <option value="">All Tags</option>
+                            <option value="Work">Work</option>
+                            <option value="Career">Career</option>
+                            <option value="Studies">Studies</option>
+                            <option value="Family">Family</option>
+                            <option value="Friends">Friends</option>
+                            <option value="Relationships">Relationships</option>
+                            <option value="Health">Health</option>
+                            <option value="Fitness">Fitness</option>
+                            <option value="Personal Growth">Personal Growth</option>
+                            <option value="Self-care">Self-care</option>
+                            <option value="Hobbies">Hobbies</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Nature">Nature</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Spirituality">Spirituality</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" @bind:value="StartDateString" @bind:event="oninput">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" @bind:value="EndDateString" @bind:event="oninput">
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
+                        <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Results</h5>
+                    <span class="badge bg-info">@FilteredEntries.Count entries found</span>
+                </div>
+                <div class="card-body">
+                    @if (IsLoading)
+                    {
+                        <div class="alert alert-info" role="alert">
+                            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                            Loading results...
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            ❌ @ErrorMessage
+                        </div>
+                    }
+                    else if (!HasSearched)
+                    {
+                        <div class="alert alert-info">
+                            🔍 Use the filter options on the left to search for entries. Click "Apply Filters" to see results.
+                        </div>
+                    }
+                    else if (FilteredEntries.Count > 0)
+                    {
+                        <div class="entries-list">
+                            @foreach (var entry in FilteredEntries)
+                            {
+                                <div class="card mb-3 entry-card">
+                                    <div class="card-header d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-0">@entry.CreatedAt.ToString("dddd, MMMM dd, yyyy")</h6>
+                                            <small class="text-muted">@entry.CreatedAt.ToString("g")</small>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-primary">@entry.PrimaryMood</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text">@entry.Content</p>
+                                        
+                                        @if (entry.Tags != null && entry.Tags.Count > 0)
+                                        {
+                                            <div class="mt-2">
+                                                @foreach (var tag in entry.Tags)
+                                                {
+                                                    <span class="badge bg-secondary">@tag</span>
+                                                }
+                                            </div>
+                                        }
+
+                                        @if (entry.SecondaryMoods != null && entry.SecondaryMoods.Count > 0)
+                                        {
+                                            <div class="mt-2">
+                                                <strong>Secondary Moods:</strong>
+                                                @foreach (var mood in entry.SecondaryMoods)
+                                                {
+                                                    <span class="badge bg-warning text-dark">@mood</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn btn-sm btn-primary" @onclick="() => EditEntry(entry)">Edit</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteEntry(entry)">Delete</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No entries found matching your filters. Try adjusting your search criteria.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string SearchTerm = "";
+    private string SelectedMood = "";
+    private string SelectedTag = "";
+    private DateTime StartDate = DateTime.Today.AddMonths(-1);
+    private DateTime EndDate = DateTime.Today;
+    private List<JournalEntry> FilteredEntries = new();
+    private bool IsLoading = false;
+    private string? ErrorMessage = null;
+    private bool HasSearched = false;
+
+    private string StartDateString
+    {
+        get => StartDate.ToString("yyyy-MM-dd");
+        set
+        {
+            if (DateTime.TryParse(value, out var date))
+            {
+                StartDate = date;
+            }
+        }
+    }
+
+    private string EndDateString
+    {
+        get => EndDate.ToString("yyyy-MM-dd");
+        set
+        {
+            if (DateTime.TryParse(value, out var date))
+            {
+                EndDate = date;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Don't load entries on initial page load
+        // User must click "Apply Filters" or search to see results
+    }
+
+    private async Task ApplyFilters()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            HasSearched = true;
+            
+            List<string>? tags = null;
+            if (!string.IsNullOrEmpty(SelectedTag))
+            {
+                tags = new List<string> { SelectedTag };
+            }
+
+            FilteredEntries = await SearchService.SearchEntriesAsync(
+                searchText: string.IsNullOrEmpty(SearchTerm) ? null : SearchTerm,
+                startDate: StartDate,
+                endDate: EndDate,
+                mood: string.IsNullOrEmpty(SelectedMood) ? null : SelectedMood,
+                tags: tags
+            );
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error applying filters: {ex.Message}";
+            Console.WriteLine($"Error applying filters: {ex.Message}");
+            FilteredEntries = new();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task FilterByMood(ChangeEventArgs e)
+    {
+        SelectedMood = e.Value?.ToString() ?? "";
+        await ApplyFilters();
+    }
+
+    private async Task FilterByTag(ChangeEventArgs e)
+    {
+        SelectedTag = e.Value?.ToString() ?? "";
+        await ApplyFilters();
+    }
+
+    private async Task ClearFilters()
+    {
+        SearchTerm = "";
+        SelectedMood = "";
+        SelectedTag = "";
+        StartDate = DateTime.Today.AddMonths(-1);
+        FilteredEntries = new();
+        HasSearched = false;
+        ErrorMessage = null;
+        await ApplyFilters();
+    }
+
+    private void EditEntry(JournalEntry entry)
+    {
+        NavigationManager.NavigateTo($"/add-journal/{entry.Id}");
+    }
+
+    private async Task DeleteEntry(JournalEntry entry)
+    {
+        try
+        {
+            await JournalService.DeleteAsync(entry.EntryDate);
+            await ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error deleting entry: {ex.Message}";
+            Console.WriteLine($"Error deleting entry: {ex.Message}");
+        }
+    }
+}

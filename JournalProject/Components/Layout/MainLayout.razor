@@ -1,0 +1,46 @@
+﻿@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject ThemeService ThemeService
+@inject IJSRuntime JS
+
+<div class="page @(ThemeService.IsDark ? "dark-theme" : "")">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var saved = await JS.InvokeAsync<string>("theme.get");
+
+            if (saved == "dark")
+            {
+                ThemeService.SetTheme(true);
+                await JS.InvokeVoidAsync("theme.set", true);
+            }
+
+            ThemeService.OnThemeChanged += OnThemeChanged;
+        }
+    }
+
+    private async void OnThemeChanged()
+    {
+        await JS.InvokeVoidAsync("theme.set", ThemeService.IsDark);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+        await Task.CompletedTask;
+    }
+}

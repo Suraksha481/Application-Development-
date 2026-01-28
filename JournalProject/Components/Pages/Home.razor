@@ -1,0 +1,89 @@
+﻿@page "/"
+@using JournalProject.Services
+@inject JournalService JournalService
+@inject StreakService StreakService
+@inject NavigationManager NavigationManager
+
+<div class="home-container">
+    <div class="container mt-5">
+        <h1 class="mb-4">📔 Welcome to Your Journal</h1>
+        
+        <p class="lead mb-4">Your personal journaling companion to track moods, tags, and daily thoughts.</p>
+        
+        <div class="row mb-5">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">✏️ Write</h5>
+                        <p class="card-text">Create rich-text journal entries with formatting options</p>
+                        <a href="/add-journal" class="btn btn-primary">Start Writing</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">📅 Browse</h5>
+                        <p class="card-text">View your entries on a calendar or in a paginated list</p>
+                        <a href="/paginated-journal" class="btn btn-primary">View Entries</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">📊 Analyze</h5>
+                        <p class="card-text">View mood trends, word counts, and personal insights</p>
+                        <a href="/dashboard" class="btn btn-primary">View Analytics</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🔍 Search</h5>
+                        <p class="card-text">Find entries by mood, tags, or date range</p>
+                        <a href="/search-filter" class="btn btn-secondary">Search Entries</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🔒 Secure</h5>
+                        <p class="card-text">Protect entries with password/PIN encryption</p>
+                        <a href="/security-settings" class="btn btn-secondary">Manage Security</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (CurrentStreak > 0)
+        {
+            <div class="alert alert-success mt-4" role="alert">
+                <h5>🔥 Current Streak: @CurrentStreak days!</h5>
+                <p>Great job maintaining your writing habit!</p>
+            </div>
+        }
+    </div>
+</div> 
+
+@code {
+    private int CurrentStreak = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var streak = await StreakService.GetStreakAsync();
+            CurrentStreak = streak?.CurrentStreak ?? 0;
+        }
+        catch
+        {
+            CurrentStreak = 0;
+        }
+    }
+}

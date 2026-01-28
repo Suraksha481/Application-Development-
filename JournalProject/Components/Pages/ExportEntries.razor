@@ -1,0 +1,333 @@
+@page "/export-entries"
+@using JournalProject.Models
+@using JournalProject.Services
+@using System.Collections.Generic
+@inject JournalService JournalService
+@inject ExportService ExportService
+@inject SecurityService SecurityService
+
+<div class="container mt-4">
+    <h2>📤 Export Journal Entries</h2>
+
+    <div class="row">
+        <!-- Left Panel - Export Settings -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Date Range Filter</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">From Date:</label>
+                        <input type="date" class="form-control" @bind="StartDate" @bind:after="FilterByDateRange" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">To Date:</label>
+                        <input type="date" class="form-control" @bind="EndDate" @bind:after="FilterByDateRange" />
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary w-100" @onclick="ResetDateFilter">
+                        🔄 Reset Dates
+                    </button>
+                    <div class="mt-2 text-muted small">
+                        Showing @FilteredEntries.Count entries
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Export Format</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="exportFormat" id="pdf" value="pdf" @onchange="UpdateExportFormat" checked>
+                            <label class="form-check-label" for="pdf">
+                                📄 PDF
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="exportFormat" id="csv" value="csv" @onchange="UpdateExportFormat">
+                            <label class="form-check-label" for="csv">
+                                📊 CSV
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" id="text" value="text" @onchange="UpdateExportFormat">
+                            <label class="form-check-label" for="text">
+                                📝 Text
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Bulk Export:</label>
+                        <button class="btn btn-sm btn-outline-primary w-100" @onclick="SelectAll">Select All</button>
+                        <button class="btn btn-sm btn-outline-secondary w-100 mt-2" @onclick="DeselectAll">Deselect All</button>
+                        <button class="btn btn-sm btn-success w-100 mt-2" @onclick="ExportSelected" disabled="@(SelectedEntries.Count == 0 || IsExporting)">
+                            @if (IsExporting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Exporting...</span>
+                            }
+                            else
+                            {
+                                <span>Export Selected (@SelectedEntries.Count)</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Messages -->
+            @if (!string.IsNullOrEmpty(SuccessMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    ✅ @SuccessMessage
+                    <button type="button" class="btn-close" @onclick='() => SuccessMessage = ""'></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    ❌ @ErrorMessage
+                    <button type="button" class="btn-close" @onclick='() => ErrorMessage = ""'></button>
+                </div>
+            }
+        </div>
+
+        <!-- Right Panel - Journal List -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Journal Entries (@FilteredEntries.Count / @AllEntries.Count)</h5>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    @if (FilteredEntries.Count == 0)
+                    {
+                        <p class="text-muted text-center">
+                            @if (AllEntries.Count == 0)
+                            {
+                                <span>No journal entries found.</span>
+                            }
+                            else
+                            {
+                                <span>No entries found in the selected date range.</span>
+                            }
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var entry in FilteredEntries)
+                            {
+                                var isSelected = SelectedEntries.Contains(entry.Id);
+                                <div class="list-group-item d-flex justify-content-between align-items-start p-3 border-bottom">
+                                    <div class="flex-grow-1" style="cursor: pointer;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="entry_@entry.Id" 
+                                                   @onchange="@((ChangeEventArgs e) => ToggleSelection(entry.Id, (bool)e.Value!))"
+                                                   checked="@isSelected">
+                                            <label class="form-check-label" for="entry_@entry.Id" style="cursor: pointer; flex-grow: 1;">
+                                                <strong>@entry.Title</strong>
+                                                <br />
+                                                <small class="text-muted">
+                                                    📅 @entry.CreatedAt.ToString("MMM dd, yyyy") | 
+                                                    😊 @entry.PrimaryMood | 
+                                                    📝 @(entry.Content?.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length ?? 0) words
+                                                </small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary ms-2" @onclick="@(() => ExportSingleEntry(entry))" title="Export this entry">
+                                        💾 Export
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<JournalEntry> AllEntries = new();
+    private List<JournalEntry> FilteredEntries = new();
+    private HashSet<int> SelectedEntries = new();
+    private string SelectedFormat = "pdf";
+    private bool IsExporting = false;
+    private string SuccessMessage = "";
+    private string ErrorMessage = "";
+    private DateTime StartDate = DateTime.Now.AddMonths(-1);
+    private DateTime EndDate = DateTime.Now.AddDays(1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJournals();
+    }
+
+    private async Task LoadJournals()
+    {
+        try
+        {
+            var entries = await JournalService.GetEntries();
+            AllEntries = entries.OrderByDescending(e => e.CreatedAt).ToList();
+            FilterByDateRange();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error loading journals: {ex.Message}";
+        }
+    }
+
+    private void FilterByDateRange()
+    {
+        FilteredEntries = AllEntries
+            .Where(e => e.CreatedAt.Date >= StartDate.Date && e.CreatedAt.Date <= EndDate.Date)
+            .OrderByDescending(e => e.CreatedAt)
+            .ToList();
+        
+        // Clear selection when filter changes
+        SelectedEntries.Clear();
+        StateHasChanged();
+    }
+
+    private void ResetDateFilter()
+    {
+        StartDate = DateTime.Now.AddMonths(-1);
+        EndDate = DateTime.Now.AddDays(1);
+        FilterByDateRange();
+    }
+
+    private void UpdateExportFormat(ChangeEventArgs e)
+    {
+        SelectedFormat = e.Value?.ToString() ?? "pdf";
+    }
+
+    private void ToggleSelection(int entryId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            SelectedEntries.Add(entryId);
+        }
+        else
+        {
+            SelectedEntries.Remove(entryId);
+        }
+    }
+
+    private void SelectAll()
+    {
+        SelectedEntries.Clear();
+        foreach (var entry in FilteredEntries)
+        {
+            SelectedEntries.Add(entry.Id);
+        }
+    }
+
+    private void DeselectAll()
+    {
+        SelectedEntries.Clear();
+    }
+
+    private async Task ExportSingleEntry(JournalEntry entry)
+    {
+        var entriesToExport = new List<JournalEntry> { entry };
+        await SaveExport(entriesToExport, entry.Title ?? "JournalExport");
+    }
+
+    private async Task ExportSelected()
+    {
+        if (SelectedEntries.Count == 0)
+        {
+            ErrorMessage = "Please select at least one entry to export.";
+            return;
+        }
+
+        var entriesToExport = FilteredEntries.Where(e => SelectedEntries.Contains(e.Id)).ToList();
+        await SaveExport(entriesToExport, $"JournalExport_{DateTime.Now:yyyyMMdd_HHmmss}");
+    }
+
+    private async Task SaveExport(List<JournalEntry> entriesToExport, string defaultFileName)
+    {
+        IsExporting = true;
+        ErrorMessage = "";
+        SuccessMessage = "";
+
+        try
+        {
+            string fileName = defaultFileName;
+            if (!fileName.Contains("_"))
+            {
+                fileName = defaultFileName.Replace(" ", "_");
+            }
+
+            string fileExtension = SelectedFormat.ToLower() switch
+            {
+                "pdf" => ".pdf",
+                "csv" => ".csv",
+                "text" => ".txt",
+                _ => ".txt"
+            };
+
+            fileName = fileName + fileExtension;
+
+            // Get user's Downloads folder
+            var downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            downloadsPath = Path.Combine(downloadsPath, "Downloads");
+
+            // Ensure Downloads folder exists
+            if (!Directory.Exists(downloadsPath))
+            {
+                downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            }
+
+            // Create full file path
+            var fullPath = Path.Combine(downloadsPath, fileName);
+
+            string filePath = "";
+
+            switch (SelectedFormat.ToLower())
+            {
+                case "pdf":
+                    filePath = await ExportService.ExportToPDF(entriesToExport, fullPath);
+                    break;
+
+                case "csv":
+                    filePath = await ExportService.ExportToCSV(entriesToExport, fullPath);
+                    break;
+
+                case "text":
+                    filePath = await ExportService.ExportToText(entriesToExport, fullPath);
+                    break;
+
+                default:
+                    ErrorMessage = "Invalid export format selected.";
+                    IsExporting = false;
+                    return;
+            }
+
+            // Verify file was actually created
+            if (File.Exists(filePath))
+            {
+                SuccessMessage = $"✅ Successfully exported {entriesToExport.Count} entries! Saved to: {filePath}";
+            }
+            else
+            {
+                ErrorMessage = "File export failed: File was not created.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+}

@@ -1,0 +1,90 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@using JournalProject.Services
+@inject ThemeService ThemeService
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">📔 Journal App</a>
+    </div>
+</div>
+
+<input type="checkbox"
+       title="Navigation menu"
+       class="navbar-toggler"
+       @bind="isNavOpen" />
+
+<div class="nav-scrollable" @onclick="CloseNav">
+    <nav class="flex-column">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/journal">
+                Journal
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/add-journal">
+                Add Journal
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/calendar-navigation">
+                Calendar
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/dashboard">
+                Analytics
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/search-filter">
+                Search
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/export-entries">
+                Export
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/security-settings">
+                Security
+            </NavLink>
+        </div>
+
+        <!-- 🔥 THEME TOGGLE (REQUIRED) -->
+        <div class="nav-item px-3 mt-3">
+          <button class="btn btn-secondary w-100"
+            @onclick="ThemeService.ToggleTheme">
+            @(ThemeService.IsDark ? "🌙 Dark Mode" : "☀️ Light Mode")
+          </button>
+        </div>
+
+    </nav>
+</div>
+
+@code {
+    private bool isNavOpen;
+
+    private void CloseNav()
+    {
+        isNavOpen = false;
+    }
+
+    private void ToggleTheme()
+    {
+        ThemeService.ToggleTheme();
+    }
+}

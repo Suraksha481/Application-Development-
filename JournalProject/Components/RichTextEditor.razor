@@ -1,0 +1,300 @@
+
+
+@inject IJSRuntime JS
+
+<div class="rich-text-editor">
+    <div class="editor-toolbar">
+        <div class="toolbar-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatBold()" data-bs-toggle="tooltip" data-bs-title="Bold">
+                <strong>B</strong>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatItalic()" data-bs-toggle="tooltip" data-bs-title="Italic">
+                <i>I</i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatUnderline()" data-bs-toggle="tooltip" data-bs-title="Underline">
+                <u>U</u>
+            </button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatH1()" data-bs-toggle="tooltip" data-bs-title="Heading 1">
+                H1
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatH2()" data-bs-toggle="tooltip" data-bs-title="Heading 2">
+                H2
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatH3()" data-bs-toggle="tooltip" data-bs-title="Heading 3">
+                H3
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatList()" data-bs-toggle="tooltip" data-bs-title="Bullet List">
+                ⋯
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => FormatOrderedList()" data-bs-toggle="tooltip" data-bs-title="Numbered List">
+                #
+            </button>
+        </div>
+
+        <div class="toolbar-group ms-auto">
+            <span class="badge bg-light text-dark">@WordCount words</span>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <div @ref="editorRef" 
+             class="editor-content form-control"
+             contenteditable="@(!Disabled)"
+             @oninput="OnEditorInput"
+             @onblur="OnEditorBlur"
+             @onkeydown="OnKeyDown">
+        </div>
+    </div>
+
+    <div class="text-muted mt-2 editor-info">
+        <small>Click in the editor to start typing. Use toolbar buttons to format your text.</small>
+    </div>
+</div>
+
+<style>
+    .rich-text-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .editor-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-bottom: none;
+        border-radius: 4px 4px 0 0;
+        align-items: center;
+    }
+
+    .toolbar-group {
+        display: flex;
+        gap: 4px;
+        border-right: 1px solid #dee2e6;
+        padding-right: 8px;
+    }
+
+    .toolbar-group:last-child {
+        border-right: none;
+    }
+
+    .toolbar-group.ms-auto {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .editor-toolbar button {
+        min-width: 36px;
+        padding: 4px 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .editor-toolbar button:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+
+    .editor-container {
+        position: relative;
+    }
+
+    .editor-content {
+        min-height: 300px;
+        max-height: 600px;
+        padding: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 4px 4px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #212529;
+        background: white;
+        overflow: auto;
+        word-wrap: break-word;
+        resize: vertical;
+    }
+
+    .editor-content:focus {
+        outline: none;
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .editor-content[contenteditable="false"] {
+        background: #e9ecef;
+        color: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .editor-content h1,
+    .editor-content h2,
+    .editor-content h3 {
+        margin: 16px 0 8px 0;
+        font-weight: 700;
+    }
+
+    .editor-content h1 {
+        font-size: 2rem;
+    }
+
+    .editor-content h2 {
+        font-size: 1.75rem;
+    }
+
+    .editor-content h3 {
+        font-size: 1.5rem;
+    }
+
+    .editor-content ul,
+    .editor-content ol {
+        margin: 8px 0;
+        padding-left: 40px;
+    }
+
+    .editor-content li {
+        margin: 4px 0;
+    }
+
+    .editor-info {
+        font-size: 0.875rem;
+    }
+</style>
+
+@code {
+    private ElementReference editorRef;
+
+    [Parameter] 
+    public string Content { get; set; } = string.Empty;
+    
+    [Parameter] 
+    public EventCallback<string> ContentChanged { get; set; }
+    
+    [Parameter] 
+    public bool Disabled { get; set; }
+
+    private int WordCount
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Content))
+                return 0;
+            
+            // Remove HTML tags for word count
+            var text = System.Text.RegularExpressions.Regex.Replace(Content, "<[^>]*>", "");
+            return text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(Content))
+        {
+            await editorRef.FocusAsync();
+            await JS.InvokeVoidAsync("setEditorContent", editorRef, Content);
+        }
+    }
+
+    private async Task FormatBold()
+    {
+        await ApplyFormat("bold");
+    }
+
+    private async Task FormatItalic()
+    {
+        await ApplyFormat("italic");
+    }
+
+    private async Task FormatUnderline()
+    {
+        await ApplyFormat("underline");
+    }
+
+    private async Task FormatH1()
+    {
+        await ApplyFormat("h1");
+    }
+
+    private async Task FormatH2()
+    {
+        await ApplyFormat("h2");
+    }
+
+    private async Task FormatH3()
+    {
+        await ApplyFormat("h3");
+    }
+
+    private async Task FormatList()
+    {
+        await ApplyFormat("ul");
+    }
+
+    private async Task FormatOrderedList()
+    {
+        await ApplyFormat("ol");
+    }
+
+    private async Task ApplyFormat(string format)
+    {
+        await JS.InvokeVoidAsync("applyFormat", format);
+        await Task.Delay(10);
+        await CaptureContent();
+    }
+
+    private async Task OnEditorBlur()
+    {
+        await CaptureContent();
+    }
+
+    private async Task OnEditorInput()
+    {
+        await CaptureContent();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        // Keyboard shortcuts
+        if (e.CtrlKey || e.MetaKey)
+        {
+            switch (e.Key.ToLower())
+            {
+                case "b":
+                    await ApplyFormat("bold");
+                    break;
+                case "i":
+                    await ApplyFormat("italic");
+                    break;
+                case "u":
+                    await ApplyFormat("underline");
+                    break;
+            }
+        }
+    }
+
+    private async Task CaptureContent()
+    {
+        try
+        {
+            var html = await JS.InvokeAsync<string>("getEditorContent", editorRef);
+            if (html != null && html != Content)
+            {
+                Content = html;
+                await ContentChanged.InvokeAsync(Content);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error capturing content: {ex.Message}");
+        }
+    }
+}
